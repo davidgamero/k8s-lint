@@ -1,69 +1,76 @@
-import * as kubectl from "./kubectl";
-import * as io from "@actions/io";
-import * as path from "path";
-import { ToolRunner } from "@actions/exec/lib/toolrunner";
+import {beforeEach, describe, expect, test, vi} from 'vitest'
+import * as path from 'path'
 
-var mockStatusCode: number;
-const mockExecFn = jest.fn().mockImplementation(() => mockStatusCode);
-jest.mock("@actions/exec/lib/toolrunner", () => {
-  return {
-    ToolRunner: jest.fn().mockImplementation(() => {
-      return {
-        exec: mockExecFn,
-      };
-    }),
-  };
-});
+vi.mock('@actions/io')
+vi.mock('@actions/exec')
 
-describe("Kubectl", () => {
-  test("throws if kubeconfig not set", async () => {
-    await expect(kubectl.kubectlLint([], "default")).rejects.toThrow();
-  });
+const io = await import('@actions/io')
+const actionsExec = await import('@actions/exec')
+const kubectl = await import('./kubectl.js')
 
-  test("throws if kubectl can't be found", async () => {
-    process.env["KUBECONFIG"] = "kubeconfig";
-    jest.spyOn(io, "which").mockReturnValue(Promise.resolve(""));
-    await expect(kubectl.kubectlLint([], "default")).rejects.toThrow();
-  });
+describe('Kubectl', () => {
+   beforeEach(() => {
+      vi.clearAllMocks()
+   })
 
-  test("gets kubectl, validates kubeconfig, and lints the manifests", async () => {
-    process.env["KUBECONFIG"] = "kubeconfig";
-    const pathToTool = "pathToTool";
-    jest
-      .spyOn(io, "which")
-      .mockResolvedValue(path.join(pathToTool, "kubectl.exe"));
-    mockStatusCode = 0;
+   test('throws if kubeconfig not set', async () => {
+      delete process.env['KUBECONFIG']
+      await expect(kubectl.kubectlLint([], 'default')).rejects.toThrow()
+   })
 
-    const sampleManifests = [
-      "manifest1.yaml",
-      "manifest2.yaml",
-      "manifest3.yaml",
-    ];
-    expect(await kubectl.kubectlLint(sampleManifests, "default"));
-    expect(ToolRunner).toBeCalledWith(path.join(pathToTool, "kubectl.exe"), [
-      "apply",
-      "-f",
-      "manifest1.yaml",
-      "--dry-run=server",
-      "--namespace",
-      "default",
-    ]);
-    expect(ToolRunner).toBeCalledWith(path.join(pathToTool, "kubectl.exe"), [
-      "apply",
-      "-f",
-      "manifest2.yaml",
-      "--dry-run=server",
-      "--namespace",
-      "default",
-    ]);
-    expect(ToolRunner).toBeCalledWith(path.join(pathToTool, "kubectl.exe"), [
-      "apply",
-      "-f",
-      "manifest3.yaml",
-      "--dry-run=server",
-      "--namespace",
-      "default",
-    ]);
-    expect(mockExecFn).toBeCalledTimes(3);
-  });
-});
+   test("throws if kubectl can't be found", async () => {
+      process.env['KUBECONFIG'] = 'kubeconfig'
+      vi.mocked(io.which).mockResolvedValue('')
+      await expect(kubectl.kubectlLint([], 'default')).rejects.toThrow()
+   })
+
+   test('gets kubectl, validates kubeconfig, and lints the manifests', async () => {
+      process.env['KUBECONFIG'] = 'kubeconfig'
+      const pathToTool = 'pathToTool'
+      vi.mocked(io.which).mockResolvedValue(
+         path.join(pathToTool, 'kubectl.exe')
+      )
+      vi.mocked(actionsExec.exec).mockResolvedValue(0)
+
+      const sampleManifests = [
+         'manifest1.yaml',
+         'manifest2.yaml',
+         'manifest3.yaml'
+      ]
+      expect(await kubectl.kubectlLint(sampleManifests, 'default'))
+      expect(actionsExec.exec).toHaveBeenCalledWith(
+         path.join(pathToTool, 'kubectl.exe'),
+         [
+            'apply',
+            '-f',
+            'manifest1.yaml',
+            '--dry-run=server',
+            '--namespace',
+            'default'
+         ]
+      )
+      expect(actionsExec.exec).toHaveBeenCalledWith(
+         path.join(pathToTool, 'kubectl.exe'),
+         [
+            'apply',
+            '-f',
+            'manifest2.yaml',
+            '--dry-run=server',
+            '--namespace',
+            'default'
+         ]
+      )
+      expect(actionsExec.exec).toHaveBeenCalledWith(
+         path.join(pathToTool, 'kubectl.exe'),
+         [
+            'apply',
+            '-f',
+            'manifest3.yaml',
+            '--dry-run=server',
+            '--namespace',
+            'default'
+         ]
+      )
+      expect(actionsExec.exec).toHaveBeenCalledTimes(3)
+   })
+})

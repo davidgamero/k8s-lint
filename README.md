@@ -2,28 +2,68 @@
 
 Use this action to lint/validate your manifest files. Refer to the action metadata file for details about all the inputs [action.yml](./action.yml).
 
-## Lint using kubeval
+## Lint using kubeconform
 
 ```yaml
-- uses: azure/k8s-lint@v1
+- uses: azure/k8s-lint@v4
   with:
-    manifests: |
-      manifests/deployment.yml
-      manifests/service.yml
+     manifests: |
+        manifests/deployment.yml
+        manifests/service.yml
+     kubeconformOpts: -summary
 ```
+
+Manifest inputs may be individual files, directories, or workspace-relative
+glob patterns:
+
+```yaml
+- uses: azure/k8s-lint@v4
+  with:
+     manifests: |
+        manifests/
+        environments/production/*.yaml
+     kubeconformOpts: -summary
+```
+
+Directories are searched recursively for regular `.yaml`, `.yml`, and `.json`
+files. Inputs must remain within `GITHUB_WORKSPACE`; absolute paths, parent
+directory traversal, symbolic links, and non-regular files are rejected.
+Expansion is limited to 20 directory levels, 1,000 filesystem entries, 10 MiB
+per manifest, and 100 MiB total. Simple `*`, `?`, and character-class glob
+patterns are supported; brace and extended glob expansion are rejected. Helm
+charts and Kustomize overlays are not rendered by this feature.
 
 ## Lint using kubernetes server dryrun
 
 Requires Kubectl to be installed (you can use the [Azure/setup-kubectl](https://github.com/Azure/setup-kubectl) action). Server dryrun will communicate with the kuberenetes server, so ensure that KUBECONFIG is available in the context. This works only for kubernetes versions >=1.12
 
 ```yaml
-- uses: azure/setup-kubectl@v2.0
-- uses: azure/k8s-lint@v1
+- uses: azure/setup-kubectl@v4
+- uses: azure/k8s-lint@v4
   with:
-    lintType: dryrun
-    manifests: |
-      manifests/deployment.yml
-      manifests/service.yml
+     lintType: dryrun
+     manifests: |
+        manifests/deployment.yml
+        manifests/service.yml
+```
+
+## Development
+
+This repository enforces a **7-day dependency freshness ("bake") period**: newly
+published npm packages are not adopted until they are at least 7 days old. This
+is enforced two ways:
+
+- **Dependabot** uses a 7-day `cooldown` and runs monthly, grouping minor/patch
+  updates into a single PR (major updates get individual PRs).
+- **`.npmrc`** sets `min-release-age=7` (days) with `engine-strict=true`, which
+  requires **npm >= 11.10.0**. `npm install` will fail on older npm with a clear
+  message — upgrade with `npm install -g npm@latest`.
+
+**Security exception:** to adopt an urgent patch that is less than 7 days old,
+install it once with the age check disabled:
+
+```sh
+npm install <pkg> --min-release-age=0
 ```
 
 ## Contributing
@@ -39,3 +79,7 @@ provided by the bot. You will only need to do this once across all repos using o
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## Support
+
+k8s-lint is an open source project that is [**not** covered by the Microsoft Azure support policy](https://support.microsoft.com/en-us/help/2941892/support-for-linux-and-open-source-technology-in-azure). [Please search open issues here](https://github.com/Azure/k8s-lint/issues), and if your issue isn't already represented please [open a new one](https://github.com/Azure/k8s-lint/issues/new/choose). The project maintainers will respond to the best of their abilities.
