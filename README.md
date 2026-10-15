@@ -13,6 +13,26 @@ Use this action to lint/validate your manifest files. Refer to the action metada
      kubeconformOpts: -summary
 ```
 
+Manifest inputs may be individual files, directories, or workspace-relative
+glob patterns:
+
+```yaml
+- uses: azure/k8s-lint@v4
+  with:
+     manifests: |
+        manifests/
+        environments/production/*.yaml
+     kubeconformOpts: -summary
+```
+
+Directories are searched recursively for regular `.yaml`, `.yml`, and `.json`
+files. Inputs must remain within `GITHUB_WORKSPACE`; absolute paths, parent
+directory traversal, symbolic links, and non-regular files are rejected.
+Expansion is limited to 20 directory levels, 1,000 filesystem entries, 10 MiB
+per manifest, and 100 MiB total. Simple `*`, `?`, and character-class glob
+patterns are supported; brace and extended glob expansion are rejected. Helm
+charts and Kustomize overlays are not rendered by this feature.
+
 ## Lint using kubernetes server dryrun
 
 Requires Kubectl to be installed (you can use the [Azure/setup-kubectl](https://github.com/Azure/setup-kubectl) action). Server dryrun will communicate with the kuberenetes server, so ensure that KUBECONFIG is available in the context. This works only for kubernetes versions >=1.12

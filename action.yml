@@ -3,7 +3,7 @@ description: 'Lint k8s manifest files'
 inputs:
    # Please ensure you have used either azure/k8s-actions/aks-set-context or azure/k8s-actions/k8s-set-context in the workflow before this action if using dryrun
    manifests:
-      description: 'Path to the manifest files which will be used for deployment.'
+      description: 'Workspace-relative manifest files, directories, or glob patterns which will be linted.'
       required: true
    lintType:
       description: 'Acceptable values: kubeconform, dryrun'

@@ -1,17 +1,35 @@
-import {describe, expect, test, vi, beforeEach} from 'vitest'
+import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest'
 
 vi.mock('@actions/core')
 vi.mock('./kubeconform/kubeconform.js')
 vi.mock('./kubectl/kubectl.js')
+vi.mock('./manifests.js')
 
 const core = await import('@actions/core')
 const kubeconform = await import('./kubeconform/kubeconform.js')
 const kubectl = await import('./kubectl/kubectl.js')
+const manifests = await import('./manifests.js')
 const run = await import('./run.js')
 
 describe('run', () => {
+   const originalWorkspace = process.env['GITHUB_WORKSPACE']
+
    beforeEach(() => {
       vi.clearAllMocks()
+      process.env['GITHUB_WORKSPACE'] = '/workspace'
+      vi.mocked(manifests.expandManifestInputs).mockResolvedValue([
+         '/workspace/manifest1.yaml',
+         '/workspace/manifest2.yaml',
+         '/workspace/manifest3.yaml'
+      ])
+   })
+
+   afterEach(() => {
+      if (originalWorkspace === undefined) {
+         delete process.env['GITHUB_WORKSPACE']
+      } else {
+         process.env['GITHUB_WORKSPACE'] = originalWorkspace
+      }
    })
 
    test('runs kubectl dry run based on input', async () => {
@@ -26,7 +44,11 @@ describe('run', () => {
       expect(await run.kubeconform()).toBeUndefined()
       expect(core.getInput).toHaveBeenCalledTimes(3)
       expect(kubectl.kubectlLint).toHaveBeenCalledWith(
-         ['manifest1.yaml', 'manifest2.yaml', 'manifest3.yaml'],
+         [
+            '/workspace/manifest1.yaml',
+            '/workspace/manifest2.yaml',
+            '/workspace/manifest3.yaml'
+         ],
          'sampleNamespace'
       )
    })
@@ -43,7 +65,11 @@ describe('run', () => {
       expect(await run.kubeconform()).toBeUndefined()
       expect(core.getInput).toHaveBeenCalledTimes(3)
       expect(kubectl.kubectlLint).toHaveBeenCalledWith(
-         ['manifest1.yaml', 'manifest2.yaml', 'manifest3.yaml'],
+         [
+            '/workspace/manifest1.yaml',
+            '/workspace/manifest2.yaml',
+            '/workspace/manifest3.yaml'
+         ],
          'default'
       )
    })
@@ -60,7 +86,11 @@ describe('run', () => {
       expect(await run.kubeconform()).toBeUndefined()
       expect(core.getInput).toHaveBeenCalledTimes(3)
       expect(kubeconform.kubeconformLint).toHaveBeenCalledWith(
-         ['manifest1.yaml', 'manifest2.yaml', 'manifest3.yaml'],
+         [
+            '/workspace/manifest1.yaml',
+            '/workspace/manifest2.yaml',
+            '/workspace/manifest3.yaml'
+         ],
          '-summary'
       )
    })
@@ -77,7 +107,35 @@ describe('run', () => {
       expect(await run.kubeconform()).toBeUndefined()
       expect(core.getInput).toHaveBeenCalledTimes(3)
       expect(kubeconform.kubeconformLint).toHaveBeenCalledWith(
-         ['manifest1.yaml', 'manifest2.yaml', 'manifest3.yaml'],
+         [
+            '/workspace/manifest1.yaml',
+            '/workspace/manifest2.yaml',
+            '/workspace/manifest3.yaml'
+         ],
+         '-summary'
+      )
+   })
+
+   test('expands manifest inputs within the workspace', async () => {
+      vi.mocked(core.getInput).mockImplementation((input) => {
+         if (input == 'manifests') return 'manifests/\nmore/*.yaml'
+         if (input == 'lintType') return 'kubeconform'
+         if (input == 'kubeconformOpts') return '-summary'
+         return ''
+      })
+
+      await run.kubeconform()
+
+      expect(manifests.expandManifestInputs).toHaveBeenCalledWith(
+         ['manifests/', 'more/*.yaml'],
+         '/workspace'
+      )
+      expect(kubeconform.kubeconformLint).toHaveBeenCalledWith(
+         [
+            '/workspace/manifest1.yaml',
+            '/workspace/manifest2.yaml',
+            '/workspace/manifest3.yaml'
+         ],
          '-summary'
       )
    })
